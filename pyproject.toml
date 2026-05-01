@@ -1,0 +1,11 @@
+[project]
+name = "radcoringa"
+version = "0.1.0"
+description = "Implementação de um sistema de controle de autenticação AAA (Authentication, Authorization, Accounting) utilizando Django."
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "django>=6.0.4",
+    "dotenv>=0.9.9",
+    "mysqlclient>=2.2.8",
+]
