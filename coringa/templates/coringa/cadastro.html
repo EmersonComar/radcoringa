@@ -1,9 +1,9 @@
 {% extends 'coringa/base.html' %}
-{% block title %}Novo Cadastro{% endblock %}
+{% block title %}{% if cliente %}Editar Cadastro{% else %}Novo Cadastro{% endif %}{% endblock %}
 
 {% block content %}
 <div class="container pb-5">
-    <form method="post">
+    <form method="post" action="">
         {% csrf_token %}
         
         <div class="card shadow-sm mb-4">

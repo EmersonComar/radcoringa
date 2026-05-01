@@ -9,6 +9,7 @@ class ClienteForm(forms.ModelForm):
         widgets = {
             'nome': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Provedor internet'}),
             'data_expiracao': forms.DateTimeInput(
+                format='%Y-%m-%dT%H:%M',
                 attrs={'class': 'form-control', 'type': 'datetime-local'}
             ),
             'observacao': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
