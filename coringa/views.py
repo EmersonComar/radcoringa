@@ -1,7 +1,8 @@
-from coringa.models import Cliente
-from .forms import ClienteForm, IPFormSet
-from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.shortcuts import render, redirect, get_object_or_404
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+
+from .forms import ClienteForm, IPFormSet
+from coringa.models import Cliente, ClienteIP
 
 def Home(request):
     clientes_list = Cliente.objects.order_by('data_expiracao')
@@ -68,3 +69,13 @@ def Desativar(request, pk):
     cliente.status = 'inativo'
     cliente.save()
     return redirect('home')
+
+def Detalhes(request, pk):
+    cliente = get_object_or_404(Cliente, pk=pk)
+    ips = ClienteIP.objects.filter(cliente=cliente)
+    context = { 
+        'user': str(request.user),
+        'cliente': cliente,
+        'ips': ips
+    }
+    return render(request, 'coringa/detalhes.html', context)

@@ -35,13 +35,11 @@
                             {% else %}
                                 bg-warning
                             {% endif %}">{{ cliente.status }}</span></td>
-                        <td class="text-center">
-                            <div class="btn-group">
-                                <a href="#" class="btn btn-primary" aria-current="page">Detalhes</a>
-                                <a href="editar/{{cliente.id }}" class="btn btn-warning">Editar</a>
-                                <a href="desativar/{{cliente.id }}" class="btn btn-danger"
-                                    onclick="return confirm('Tem certeza que deseja desativar este cliente?');">Desativar</a>
-                            </div>
+                        <td class="d-flex justify-content-center gap-2">
+                            <a href="detalhes/{{cliente.id }}" class="btn btn-primary" aria-current="page">Detalhes</a>
+                            <a href="editar/{{cliente.id }}" class="btn btn-warning">Editar</a>
+                            <a href="desativar/{{cliente.id }}" class="btn btn-danger"
+                                onclick="return confirm('Tem certeza que deseja desativar este cliente?');">Desativar</a>
                         </td>
                     </tr>
                     {% endfor %}
@@ -52,7 +50,7 @@
     {% if clientes.has_other_pages %}
     <div class="card-footer d-flex justify-content-end bg-white">
         <nav aria-label="Navegação de página">
-            <ul class="pagination mb-0">
+            <ul class="pagination mb-2 mt-2">
                 {% if clientes.has_previous %}
                 <li class="page-item">
                     <a class="page-link" href="?page={{ clientes.previous_page_number }}">Anterior</a>
