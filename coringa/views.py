@@ -1,11 +1,23 @@
 from coringa.models import Cliente
 from .forms import ClienteForm, IPFormSet
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.shortcuts import render, redirect, get_object_or_404
 
 def Home(request):
-    context = {
+    clientes_list = Cliente.objects.order_by('data_expiracao')
+    paginator = Paginator(clientes_list, 10)
+    
+    page = request.GET.get('page')
+    try:
+        clientes = paginator.page(page)
+    except PageNotAnInteger:
+        clientes = paginator.page(1)
+    except EmptyPage:
+        clientes = paginator.page(paginator.num_pages)
+
+    context = { 
         'user': str(request.user),
-        'clientes': Cliente.objects.order_by('data_expiracao'),
+        'clientes': clientes,
         'total': Cliente.objects.count()
     }
 

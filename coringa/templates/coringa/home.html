@@ -49,5 +49,42 @@
             </table>
         </div>
     </div>
+    {% if clientes.has_other_pages %}
+    <div class="card-footer d-flex justify-content-end bg-white">
+        <nav aria-label="Navegação de página">
+            <ul class="pagination mb-0">
+                {% if clientes.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ clientes.previous_page_number }}">Anterior</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">Anterior</span>
+                </li>
+                {% endif %}
+
+                {% for i in clientes.paginator.page_range %}
+                    {% if clientes.number == i %}
+                    <li class="page-item active" aria-current="page">
+                        <span class="page-link">{{ i }}</span>
+                    </li>
+                    {% else %}
+                    <li class="page-item"><a class="page-link" href="?page={{ i }}">{{ i }}</a></li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if clientes.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ clientes.next_page_number }}">Próxima</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">Próxima</span>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
