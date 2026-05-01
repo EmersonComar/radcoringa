@@ -1,6 +1,6 @@
 from django.urls import path
-from .views import home
+from coringa.views import Home
 
 urlpatterns = [
-    path('', home, name='home')
+    path('', Home, name='home')
 ]
