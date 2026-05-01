@@ -1,0 +1,59 @@
+{% extends 'coringa/base.html' %}
+{% block title %}Novo Cadastro{% endblock %}
+
+{% block content %}
+<div class="container pb-5">
+    <form method="post">
+        {% csrf_token %}
+        
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-dark text-white">
+                <h4 class="mb-0">Dados do Provedor</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8 mb-3">
+                        <label class="form-label fw-bold">Razão Social</label>
+                        {{ cadastro.nome }}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">Expiração</label>
+                        {{ cadastro.data_expiracao }}
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Observações</label>
+                    {{ cadastro.observacao }}
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-secondary text-white">
+                <h4 class="mb-0">IPs Associados</h4>
+            </div>
+            <div class="card-body">
+                {{ ips.management_form }}
+                <div id="formset-container">
+                    {% for form in ips %}
+                        <div class="row align-items-center mb-2 ip-form">
+                            <div class="col-md-10">
+                                {{ form.endereco_ip }}
+                                {% if form.endereco_ip.errors %}
+                                    <div class="text-danger small">{{ form.endereco_ip.errors }}</div>
+                                {% endif %}
+                            </div>
+                            {{ form.id }}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2">
+            <a href="/" class="btn btn-outline-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary px-4">Salvar Provedor</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
