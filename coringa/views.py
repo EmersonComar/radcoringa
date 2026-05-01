@@ -5,7 +5,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 def Home(request):
     context = {
         'user': str(request.user),
-        'clientes': Cliente.objects.filter(status='ativo').order_by('data_expiracao'),
+        'clientes': Cliente.objects.order_by('data_expiracao'),
         'total': Cliente.objects.count()
     }
 
@@ -50,3 +50,9 @@ def Editar(request, pk):
         'cadastro': form,
         'ips': formset,
     })
+
+def Desativar(request, pk):
+    cliente = get_object_or_404(Cliente, pk=pk)
+    cliente.status = 'inativo'
+    cliente.save()
+    return redirect('home')

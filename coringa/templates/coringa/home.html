@@ -27,12 +27,20 @@
                         <td>{{ cliente.nome }}</td>
                         <td>{{ cliente.data_expiracao }}</td>
                         <td>{{ cliente.responsavel_cadastro }}</td>
-                        <td><span class="badge bg-success">{{ cliente.status }}</span></td>
+                        <td><span class="badge 
+                            {% if cliente.status == 'ativo' %}
+                                bg-success
+                            {% elif cliente.status == 'inativo' %}
+                                bg-danger
+                            {% else %}
+                                bg-warning
+                            {% endif %}">{{ cliente.status }}</span></td>
                         <td class="text-center">
                             <div class="btn-group">
                                 <a href="#" class="btn btn-primary" aria-current="page">Detalhes</a>
                                 <a href="editar/{{cliente.id }}" class="btn btn-warning">Editar</a>
-                                <a href="#" class="btn btn-danger">Deletar</a>
+                                <a href="desativar/{{cliente.id }}" class="btn btn-danger"
+                                    onclick="return confirm('Tem certeza que deseja desativar este cliente?');">Desativar</a>
                             </div>
                         </td>
                     </tr>
