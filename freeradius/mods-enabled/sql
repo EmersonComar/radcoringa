@@ -1,0 +1,42 @@
+sql {
+    driver = "rlm_sql_mysql"
+    dialect = "mysql"
+
+    server = "mariadb"
+    port = 3306
+    login = "root"
+    password = "radcoringa"
+
+    radius_db = "radcoringa"
+
+    acct_table1 = "radacct"
+    acct_table2 = "radacct"
+    postauth_table = "radpostauth"
+    authcheck_table = "radcheck"
+    groupcheck_table = "radgroupcheck"
+    authreply_table = "radreply"
+    groupreply_table = "radgroupreply"
+    usergroup_table = "radusergroup"
+
+    # Read dynamic clients from the 'nas' table
+    read_clients = yes
+    client_table = "nas"
+
+    # Connection pool
+    pool {
+        start = 5
+        min = 4
+        max = 10
+        spare = 3
+        uses = 0
+        retry_delay = 30
+        lifetime = 0
+        idle_timeout = 60
+    }
+
+    # Read groups
+    group_attribute = "SQL-Group"
+
+    # SQL queries
+    $INCLUDE ${modconfdir}/${.:name}/main/${dialect}/queries.conf
+}

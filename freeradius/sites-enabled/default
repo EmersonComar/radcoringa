@@ -1,0 +1,83 @@
+server default {
+
+listen {
+    type = auth
+    ipaddr = *
+    port = 0
+}
+
+listen {
+    type = acct
+    ipaddr = *
+    port = 0
+}
+
+authorize {
+    preprocess
+    sql
+
+    
+    if (!ok) {
+        update control {
+            Auth-Type := Accept
+        }
+    }
+
+    if (&control:Auth-Type == "Accept") {
+        update reply {
+            Framed-Protocol := PPP
+            Service-Type := Framed-User
+            Mikrotik-Rate-Limit := "50M/50M"
+        }
+    }
+
+    pap
+}
+
+authenticate {
+    Auth-Type Accept {
+        update reply {
+            Framed-Protocol := PPP
+            Service-Type := Framed-User
+            Mikrotik-Rate-Limit := "50M/50M"
+        }
+    }
+
+    Auth-Type PAP {
+        pap
+    }
+    Auth-Type CHAP {
+        chap
+    }
+    Auth-Type MS-CHAP {
+        mschap
+    }
+}
+
+preacct {
+    preprocess
+    acct_unique
+}
+
+accounting {
+    sql
+}
+
+session {
+}
+
+post-auth {
+    sql
+
+    update reply {
+        Framed-Protocol := PPP
+        Service-Type := Framed-User
+        Mikrotik-Rate-Limit := "50M/50M"
+    }
+
+    Post-Auth-Type REJECT {
+        sql
+    }
+}
+
+}
