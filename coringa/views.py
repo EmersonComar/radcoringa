@@ -1,9 +1,11 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.contrib.auth.decorators import login_required
 
 from .forms import ClienteForm, IPFormSet
 from coringa.models import Cliente, ClienteIP
 
+@login_required
 def Home(request):
     clientes_list = Cliente.objects.order_by('data_expiracao')
     paginator = Paginator(clientes_list, 10)
@@ -24,6 +26,7 @@ def Home(request):
 
     return render(request, 'coringa/home.html', context)
 
+@login_required
 def Cadastro(request):
     if request.method == 'POST':
         form = ClienteForm(request.POST)
@@ -44,6 +47,7 @@ def Cadastro(request):
         'ips': formset
     })
 
+@login_required
 def Editar(request, pk):
     cliente = get_object_or_404(Cliente, pk=pk)
     
@@ -64,12 +68,14 @@ def Editar(request, pk):
         'ips': formset,
     })
 
+@login_required
 def Desativar(request, pk):
     cliente = get_object_or_404(Cliente, pk=pk)
     cliente.status = 'inativo'
     cliente.save()
     return redirect('home')
 
+@login_required
 def Detalhes(request, pk):
     cliente = get_object_or_404(Cliente, pk=pk)
     ips = ClienteIP.objects.filter(cliente=cliente)
