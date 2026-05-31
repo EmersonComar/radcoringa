@@ -35,11 +35,13 @@
                             {% else %}
                                 bg-warning
                             {% endif %}">{{ cliente.status }}</span></td>
-                        <td class="d-flex justify-content-center gap-2">
-                            <a href="detalhes/{{cliente.id }}" class="btn btn-primary" aria-current="page">Detalhes</a>
-                            <a href="editar/{{cliente.id }}" class="btn btn-warning">Editar</a>
-                            <a href="desativar/{{cliente.id }}" class="btn btn-danger"
-                                onclick="return confirm('Tem certeza que deseja desativar este cliente?');">Desativar</a>
+                        <td class="text-center">
+                            <div class="d-flex justify-content-center gap-2">
+                                <a href="detalhes/{{cliente.id }}" class="btn btn-primary btn-sm" aria-current="page">Detalhes</a>
+                                <a href="editar/{{cliente.id }}" class="btn btn-warning btn-sm">Editar</a>
+                                <a href="desativar/{{cliente.id }}" class="btn btn-danger btn-sm"
+                                    onclick="return confirm('Tem certeza que deseja desativar este cliente?');">Desativar</a>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}

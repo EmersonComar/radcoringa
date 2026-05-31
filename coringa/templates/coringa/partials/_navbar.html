@@ -7,7 +7,7 @@
         </button>
 
         <div class="collapse navbar-collapse" id="navContent">
-            <div class="d-flex ms-auto gap-2 align-items-center">
+            <div class="d-flex flex-column flex-lg-row ms-auto gap-2 align-items-stretch align-items-lg-center mt-3 mt-lg-0">
                 
                 <a href="/" class="btn btn-outline-light btn-sm">Início</a>
                 <a href="/cadastro" class="btn btn-primary btn-sm text-nowrap">Cadastrar novo</a>
@@ -16,9 +16,9 @@
                 <div class="vr mx-2 text-white opacity-50 d-none d-lg-block"></div>
 
                 
-                <form action="{% url 'logout' %}" method="post" class="d-inline">
+                <form action="{% url 'logout' %}" method="post" class="d-inline w-100 w-lg-auto">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-danger btn-sm">Sair</button>
+                    <button type="submit" class="btn btn-danger btn-sm w-100">Sair</button>
                 </form>
   
                 

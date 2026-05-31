@@ -29,10 +29,12 @@
                         <td>{{ cliente.responsavel_cadastro }}</td>
                         <td>{{ cliente.status }}</td>
                         <td class="text-center">
-                            <a href="{% url 'historico_detalhes' cliente.id %}" class="btn btn-info btn-sm text-white">Detalhes</a>
-                            {% if cliente.status == 'inativo' or cliente.status == 'desativado' %}
-                            <a href="{% url 'ativar' cliente.id %}" class="btn btn-success btn-sm">Ativar</a>
-                            {% endif %}
+                            <div class="d-flex justify-content-center gap-2">
+                                <a href="{% url 'historico_detalhes' cliente.id %}" class="btn btn-info btn-sm text-white">Detalhes</a>
+                                {% if cliente.status == 'inativo' or cliente.status == 'desativado' %}
+                                <a href="{% url 'ativar' cliente.id %}" class="btn btn-success btn-sm">Ativar</a>
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                     {% empty %}
