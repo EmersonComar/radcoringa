@@ -80,6 +80,16 @@ class Cliente(models.Model):
 
     def __str__(self):
         return f"{self.nome}"
+
+    def save(self, *args, **kwargs):
+        from django.utils import timezone
+        
+        if self.status == 'ativo' and self.data_expiracao and self.data_expiracao <= timezone.now():
+            self.status = self.StatusOpcoes.EXPIRADO
+        elif self.status == 'expirado' and self.data_expiracao and self.data_expiracao > timezone.now():
+            self.status = self.StatusOpcoes.ATIVO
+        super().save(*args, **kwargs)
+    
     
 class ClienteIP(models.Model):
 
