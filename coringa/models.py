@@ -67,6 +67,7 @@ class Cliente(models.Model):
         ATIVO = 'ativo', _('Ativo')
         EXPIRADO = 'expirado', _('Expirado')
         DESATIVADO = 'desativado', _('Desativado')
+        INATIVO = 'inativo', _('Inativo')
 
     status = models.CharField(
         max_length=10,
@@ -77,6 +78,10 @@ class Cliente(models.Model):
     class Meta:
         verbose_name = "Provedor de internet"
         verbose_name_plural = "Provedores de internet"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._old_nome = self.nome
 
     def __str__(self):
         return f"{self.nome}"
@@ -111,6 +116,10 @@ class ClienteIP(models.Model):
         verbose_name = 'IP do cliente'
         verbose_name_plural = 'IPs dos clientes'
 
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._original_endereco_ip = self.endereco_ip
 
     def __str__(self):
         return f"{self.endereco_ip}"
@@ -160,51 +169,64 @@ class Nasreload(models.Model):
         return f"{self.nasipaddress} - {self.reloadtime}"
 
 
-# Signals for Radius Sync
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.utils import timezone
 
 def trigger_nas_reload(ip_address):
     try:
-        # Check if the IP contains a mask (CIDR), if so we extract the pure IP or keep it.
-        # nasreload.nasipaddress is varchar(15), so it only fits IPv4 without mask.
         clean_ip = ip_address.split('/')[0]
         Nasreload.objects.update_or_create(
             nasipaddress=clean_ip[:15],
             defaults={'reloadtime': timezone.now()}
         )
     except Exception:
-        # Fail-safe in case of any issues with the unmanaged tables during migrations
         pass
 
 @receiver(post_save, sender=Cliente)
 def sync_cliente_nas(sender, instance, **kwargs):
+    old_name = getattr(instance, '_old_nome', None)
+    if old_name and old_name != instance.nome:
+        Nas.objects.filter(shortname=old_name[:32]).delete()
+    instance._old_nome = instance.nome
+
+    current_ips = list(instance.Lista_ips.values_list('endereco_ip', flat=True))
+
     if instance.status == 'ativo':
-        for ip in instance.Lista_ips.all():
+        for ip_str in current_ips:
             Nas.objects.update_or_create(
-                nasname=ip.endereco_ip,
+                nasname=ip_str,
                 defaults={
                     'shortname': instance.nome[:32],
                     'secret': instance.secret,
                     'description': f"Cliente: {instance.nome}"[:200]
                 }
             )
-            trigger_nas_reload(ip.endereco_ip)
+            trigger_nas_reload(ip_str)
+        
+        leftovers = Nas.objects.filter(shortname=instance.nome[:32]).exclude(nasname__in=current_ips)
+        leftover_ips = list(leftovers.values_list('nasname', flat=True))
+        leftovers.delete()
+        for lip in leftover_ips:
+            trigger_nas_reload(lip)
     else:
-        # If client becomes inactive/expired, delete all associated IPs
-        ips = list(instance.Lista_ips.values_list('endereco_ip', flat=True))
-        Nas.objects.filter(nasname__in=ips).delete()
-        for ip_str in ips:
+        Nas.objects.filter(nasname__in=current_ips).delete()
+        Nas.objects.filter(shortname=instance.nome[:32]).delete()
+        for ip_str in current_ips:
             trigger_nas_reload(ip_str)
 
 @receiver(post_delete, sender=Cliente)
 def clean_leftover_nas_on_cliente_delete(sender, instance, **kwargs):
-    # Bulk cleanup for the deleted client's shortname
     Nas.objects.filter(shortname=instance.nome[:32]).delete()
 
 @receiver(post_save, sender=ClienteIP)
 def sync_clienteip_save(sender, instance, **kwargs):
+    original_ip = getattr(instance, '_original_endereco_ip', None)
+    if original_ip and original_ip != instance.endereco_ip:
+        Nas.objects.filter(nasname=original_ip).delete()
+        trigger_nas_reload(original_ip)
+    instance._original_endereco_ip = instance.endereco_ip
+
     if instance.cliente.status == 'ativo':
         Nas.objects.update_or_create(
             nasname=instance.endereco_ip,

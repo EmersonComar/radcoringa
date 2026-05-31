@@ -8,7 +8,10 @@ from coringa.models import Cliente, ClienteIP
 @login_required
 def Home(request):
     from django.utils import timezone
-    Cliente.objects.filter(status='ativo', data_expiracao__lte=timezone.now()).update(status='expirado')
+    expired_clientes = Cliente.objects.filter(status='ativo', data_expiracao__lte=timezone.now())
+    for cliente in expired_clientes:
+        cliente.status = 'expirado'
+        cliente.save()
     
     clientes_list = Cliente.objects.filter(status='ativo').order_by('data_expiracao')
     paginator = Paginator(clientes_list, 10)
@@ -92,7 +95,10 @@ def Detalhes(request, pk):
 @login_required
 def Historico(request):
     from django.utils import timezone
-    Cliente.objects.filter(status='ativo', data_expiracao__lte=timezone.now()).update(status='expirado')
+    expired_clientes = Cliente.objects.filter(status='ativo', data_expiracao__lte=timezone.now())
+    for cliente in expired_clientes:
+        cliente.status = 'expirado'
+        cliente.save()
     clientes_list = Cliente.objects.order_by('data_expiracao')
     paginator = Paginator(clientes_list, 10)
     
