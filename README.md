@@ -21,7 +21,7 @@ cd radcoringa
 ### 2. Configurar variáveis de ambiente
 Crie um arquivo `.env` na raiz do projeto:
 ```bash
-cp .env.example .env
+cp .env-example .env
 ```
 
 Edite o arquivo `.env` com as configurações do seu ambiente.
@@ -29,7 +29,7 @@ Edite o arquivo `.env` com as configurações do seu ambiente.
 
 ### 3. Executar com Docker Compose
 ```bash
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
 ### 4. Sincronizar dependencias
@@ -50,17 +50,4 @@ uv run python manage.py createsuperuser
 ### 7. Executar servidor de desenvolvimento
 ```bash
 uv run python manage.py runserver
-```
-
-## Script para subir o ambiente
-Crie um arquivo `setup.sh` na raiz do projeto:
-```bash
-#!/bin/bash
-
-
-
-docker-compose up -d --build
-uv sync
-uv run python manage.py migrate
-uv run python manage.py createsuperuser
 ```
