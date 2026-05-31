@@ -1,10 +1,10 @@
 {% extends 'coringa/base.html' %}
-{% block title%}RADCoringa - Página inicial{% endblock %}
+{% block title%}RADCoringa - Histórico{% endblock %}
 
 {% block content %}
 <div class="row mb-3">
     <div class="col">
-        <h2 class="h4">Clientes ativos: <span class="badge bg-secondary">{{ total }}</span></h2>
+        <h2 class="h4">Histórico de Clientes <span class="badge bg-secondary">{{ total }}</span></h2>
     </div>
 </div>
 
@@ -16,9 +16,9 @@
                     <tr>
                         <th>Nome</th>
                         <th>Data expiração</th>
-                        <th>Resposável cadastro</th>
+                        <th>Responsável cadastro</th>
                         <th>Status</th>
-                        <th class="text-center">Ações</th>
+                        <th class="text-center">Ação</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -27,20 +27,17 @@
                         <td>{{ cliente.nome }}</td>
                         <td>{{ cliente.data_expiracao }}</td>
                         <td>{{ cliente.responsavel_cadastro }}</td>
-                        <td><span class="badge 
-                            {% if cliente.status == 'ativo' %}
-                                bg-success
-                            {% elif cliente.status == 'inativo' %}
-                                bg-danger
-                            {% else %}
-                                bg-warning
-                            {% endif %}">{{ cliente.status }}</span></td>
-                        <td class="d-flex justify-content-center gap-2">
-                            <a href="detalhes/{{cliente.id }}" class="btn btn-primary" aria-current="page">Detalhes</a>
-                            <a href="editar/{{cliente.id }}" class="btn btn-warning">Editar</a>
-                            <a href="desativar/{{cliente.id }}" class="btn btn-danger"
-                                onclick="return confirm('Tem certeza que deseja desativar este cliente?');">Desativar</a>
+                        <td>{{ cliente.status }}</td>
+                        <td class="text-center">
+                            <a href="{% url 'historico_detalhes' cliente.id %}" class="btn btn-info btn-sm text-white">Detalhes</a>
+                            {% if cliente.status == 'inativo' or cliente.status == 'desativado' %}
+                            <a href="{% url 'ativar' cliente.id %}" class="btn btn-success btn-sm">Ativar</a>
+                            {% endif %}
                         </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">Nenhum cliente cadastrado no histórico.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
