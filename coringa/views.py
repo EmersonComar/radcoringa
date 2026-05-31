@@ -7,7 +7,10 @@ from coringa.models import Cliente, ClienteIP
 
 @login_required
 def Home(request):
-    clientes_list = Cliente.objects.order_by('data_expiracao')
+    from django.utils import timezone
+    Cliente.objects.filter(status='ativo', data_expiracao__lte=timezone.now()).update(status='expirado')
+    
+    clientes_list = Cliente.objects.filter(status='ativo').order_by('data_expiracao')
     paginator = Paginator(clientes_list, 10)
     
     page = request.GET.get('page')
@@ -21,7 +24,7 @@ def Home(request):
     context = { 
         'user': str(request.user),
         'clientes': clientes,
-        'total': Cliente.objects.count()
+        'total': Cliente.objects.filter(status='ativo').count()
     }
 
     return render(request, 'coringa/home.html', context)
