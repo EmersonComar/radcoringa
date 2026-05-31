@@ -88,3 +88,36 @@ def Detalhes(request, pk):
         'ips': ips
     }
     return render(request, 'coringa/detalhes.html', context)
+
+@login_required
+def Historico(request):
+    from django.utils import timezone
+    Cliente.objects.filter(status='ativo', data_expiracao__lte=timezone.now()).update(status='expirado')
+    clientes_list = Cliente.objects.order_by('data_expiracao')
+    paginator = Paginator(clientes_list, 10)
+    
+    page = request.GET.get('page')
+    try:
+        clientes = paginator.page(page)
+    except PageNotAnInteger:
+        clientes = paginator.page(1)
+    except EmptyPage:
+        clientes = paginator.page(paginator.num_pages)
+
+    context = { 
+        'user': str(request.user),
+        'clientes': clientes,
+        'total': Cliente.objects.count()
+    }
+    return render(request, 'coringa/historico.html', context)
+
+@login_required
+def HistoricoDetalhes(request, pk):
+    cliente = get_object_or_404(Cliente, pk=pk)
+    ips = ClienteIP.objects.filter(cliente=cliente)
+    context = { 
+        'user': str(request.user),
+        'cliente': cliente,
+        'ips': ips
+    }
+    return render(request, 'coringa/historico_detalhes.html', context)
