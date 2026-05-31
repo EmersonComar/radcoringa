@@ -114,3 +114,112 @@ class ClienteIP(models.Model):
 
     def __str__(self):
         return f"{self.endereco_ip}"
+
+
+class Nas(models.Model):
+    nasname = models.CharField(max_length=128)
+    shortname = models.CharField(max_length=32, blank=True, null=True)
+    type = models.CharField(max_length=30, default='other')
+    ports = models.IntegerField(blank=True, null=True)
+    secret = models.CharField(max_length=60, default='secret')
+    server = models.CharField(max_length=64, blank=True, null=True)
+    community = models.CharField(max_length=50, blank=True, null=True)
+    description = models.CharField(max_length=200, default='RADIUS Client')
+
+    class Meta:
+        db_table = 'nas'
+        managed = False
+
+    def __str__(self):
+        return f"{self.nasname} ({self.shortname})"
+
+
+class Radcheck(models.Model):
+    username = models.CharField(max_length=64, default='')
+    attribute = models.CharField(max_length=64, default='')
+    op = models.CharField(max_length=2, default='==')
+    value = models.CharField(max_length=253, default='')
+
+    class Meta:
+        db_table = 'radcheck'
+        managed = False
+
+    def __str__(self):
+        return f"{self.username}: {self.attribute} {self.op} {self.value}"
+
+
+class Nasreload(models.Model):
+    nasipaddress = models.CharField(max_length=15, primary_key=True)
+    reloadtime = models.DateTimeField()
+
+    class Meta:
+        db_table = 'nasreload'
+        managed = False
+
+    def __str__(self):
+        return f"{self.nasipaddress} - {self.reloadtime}"
+
+
+# Signals for Radius Sync
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
+from django.utils import timezone
+
+def trigger_nas_reload(ip_address):
+    try:
+        # Check if the IP contains a mask (CIDR), if so we extract the pure IP or keep it.
+        # nasreload.nasipaddress is varchar(15), so it only fits IPv4 without mask.
+        clean_ip = ip_address.split('/')[0]
+        Nasreload.objects.update_or_create(
+            nasipaddress=clean_ip[:15],
+            defaults={'reloadtime': timezone.now()}
+        )
+    except Exception:
+        # Fail-safe in case of any issues with the unmanaged tables during migrations
+        pass
+
+@receiver(post_save, sender=Cliente)
+def sync_cliente_nas(sender, instance, **kwargs):
+    if instance.status == 'ativo':
+        for ip in instance.Lista_ips.all():
+            Nas.objects.update_or_create(
+                nasname=ip.endereco_ip,
+                defaults={
+                    'shortname': instance.nome[:32],
+                    'secret': instance.secret,
+                    'description': f"Cliente: {instance.nome}"[:200]
+                }
+            )
+            trigger_nas_reload(ip.endereco_ip)
+    else:
+        # If client becomes inactive/expired, delete all associated IPs
+        ips = list(instance.Lista_ips.values_list('endereco_ip', flat=True))
+        Nas.objects.filter(nasname__in=ips).delete()
+        for ip_str in ips:
+            trigger_nas_reload(ip_str)
+
+@receiver(post_delete, sender=Cliente)
+def clean_leftover_nas_on_cliente_delete(sender, instance, **kwargs):
+    # Bulk cleanup for the deleted client's shortname
+    Nas.objects.filter(shortname=instance.nome[:32]).delete()
+
+@receiver(post_save, sender=ClienteIP)
+def sync_clienteip_save(sender, instance, **kwargs):
+    if instance.cliente.status == 'ativo':
+        Nas.objects.update_or_create(
+            nasname=instance.endereco_ip,
+            defaults={
+                'shortname': instance.cliente.nome[:32],
+                'secret': instance.cliente.secret,
+                'description': f"Cliente: {instance.cliente.nome}"[:200]
+            }
+        )
+        trigger_nas_reload(instance.endereco_ip)
+    else:
+        Nas.objects.filter(nasname=instance.endereco_ip).delete()
+        trigger_nas_reload(instance.endereco_ip)
+
+@receiver(post_delete, sender=ClienteIP)
+def sync_clienteip_delete(sender, instance, **kwargs):
+    Nas.objects.filter(nasname=instance.endereco_ip).delete()
+    trigger_nas_reload(instance.endereco_ip)
