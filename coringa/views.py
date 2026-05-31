@@ -121,3 +121,10 @@ def HistoricoDetalhes(request, pk):
         'ips': ips
     }
     return render(request, 'coringa/historico_detalhes.html', context)
+
+@login_required
+def Ativar(request, pk):
+    cliente = get_object_or_404(Cliente, pk=pk)
+    cliente.status = 'ativo'
+    cliente.save()
+    return redirect('historico')

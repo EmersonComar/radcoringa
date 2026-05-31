@@ -1,6 +1,6 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
-from coringa.views import Home, Cadastro, Editar, Desativar, Detalhes, Historico, HistoricoDetalhes
+from coringa.views import Home, Cadastro, Editar, Desativar, Detalhes, Historico, HistoricoDetalhes, Ativar
 
 urlpatterns = [
     path('login/', auth_views.LoginView.as_view(template_name='coringa/login.html'), name='login'),
@@ -12,4 +12,5 @@ urlpatterns = [
     path('detalhes/<int:pk>/', Detalhes, name="detalhes"),
     path('historico/', Historico, name="historico"),
     path('historico/detalhes/<int:pk>/', HistoricoDetalhes, name="historico_detalhes"),
+    path('ativar/<int:pk>/', Ativar, name="ativar"),
 ]
