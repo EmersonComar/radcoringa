@@ -7,14 +7,19 @@ services:
     environment:
       MARIADB_ROOT_PASSWORD: ${DB_PASSWORD}
       MARIADB_DATABASE: ${DB_NAME}
-      MARIADB_USER: ${DB_USER}
-      MARIADB_PASSWORD: ${DB_PASSWORD}
-      MARIADB_ROOT_HOST: ${DB_HOST}
+      MARIADB_ROOT_HOST: "%"
+    command: --skip-ssl
     ports:
       - "3306:3306"
     volumes:
       - mariadb_data:/var/lib/mysql
       - ./freeradius/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   freeradius:
     build: ./freeradius
@@ -25,7 +30,8 @@ services:
       - "1812:1812/udp"
       - "1813:1813/udp"
     depends_on:
-      - mariadb
+      mariadb:
+        condition: service_healthy
 
 volumes:
   mariadb_data:
