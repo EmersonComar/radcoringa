@@ -20,7 +20,7 @@ IPFormSet = inlineformset_factory(
     ClienteIP,
     fields=['endereco_ip'],
     extra=5,
-    can_delete=False, 
+    can_delete=True, 
     widgets={
         'endereco_ip': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '192.168.12.0/24'})
     }

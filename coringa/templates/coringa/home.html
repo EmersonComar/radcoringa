@@ -44,6 +44,9 @@
                                     onclick="return confirm('Tem certeza que deseja desativar este cliente?');">Desativar</a>
                             </div>
                         </td>
+                        {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">Nenhum cliente ativo no momento.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
