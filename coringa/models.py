@@ -173,6 +173,8 @@ from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.utils import timezone
 
+import subprocess
+
 def trigger_nas_reload(ip_address):
     try:
         clean_ip = ip_address.split('/')[0]
@@ -180,8 +182,20 @@ def trigger_nas_reload(ip_address):
             nasipaddress=clean_ip[:15],
             defaults={'reloadtime': timezone.now()}
         )
-    except Exception:
-        pass
+        
+        try:
+            subprocess.run(
+                ["docker", "container", "restart", "radcoringa-radius"],
+                check=True,
+                capture_output=True
+            )
+        except subprocess.CalledProcessError as e:
+            print(f"Falha ao enviar SIGHUP ao container: {e.stderr.decode('utf-8')}")
+        except FileNotFoundError:
+            print("Comando 'docker' não encontrado no PATH.")
+
+    except Exception as e:
+        print(f"Erro inesperado em trigger_nas_reload: {e}")
 
 @receiver(post_save, sender=Cliente)
 def sync_cliente_nas(sender, instance, **kwargs):
