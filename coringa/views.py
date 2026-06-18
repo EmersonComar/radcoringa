@@ -3,7 +3,7 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.contrib.auth.decorators import login_required
 
 from .forms import ClienteForm, IPFormSet
-from coringa.models import Cliente, ClienteIP
+from coringa.models import Cliente, ClienteIP, Radpostauth
 
 @login_required
 def Home(request):
@@ -85,10 +85,16 @@ def Desativar(request, pk):
 def Detalhes(request, pk):
     cliente = get_object_or_404(Cliente, pk=pk)
     ips = ClienteIP.objects.filter(cliente=cliente)
+    
+    # Busca logs baseados nas strings exatas de IP salvas
+    ip_list = ips.values_list('endereco_ip', flat=True)
+    logs = Radpostauth.objects.filter(nas_ip_address__in=ip_list).order_by('-authdate')[:5]
+    
     context = { 
         'user': str(request.user),
         'cliente': cliente,
-        'ips': ips
+        'ips': ips,
+        'logs': logs
     }
     return render(request, 'coringa/detalhes.html', context)
 

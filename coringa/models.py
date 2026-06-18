@@ -157,6 +157,22 @@ class Radcheck(models.Model):
         return f"{self.username}: {self.attribute} {self.op} {self.value}"
 
 
+class Radpostauth(models.Model):
+    username = models.CharField(max_length=64)
+    pass_field = models.CharField(db_column='pass', max_length=64)
+    reply = models.CharField(max_length=32)
+    nas_ip_address = models.CharField(max_length=45, blank=True, null=True)
+    authdate = models.DateTimeField()
+    class_field = models.CharField(db_column='class', max_length=64, blank=True, null=True)
+
+    class Meta:
+        db_table = 'radpostauth'
+        managed = False
+
+    def __str__(self):
+        return f"{self.authdate} - {self.username} - {self.reply}"
+
+
 class Nasreload(models.Model):
     nasipaddress = models.CharField(max_length=15, primary_key=True)
     reloadtime = models.DateTimeField()

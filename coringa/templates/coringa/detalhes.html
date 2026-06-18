@@ -46,5 +46,54 @@
     </div>
 </div>
 
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card mb-4">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0">Logs Recentes de Autenticação</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Data/Hora</th>
+                                <th>IP do Cliente</th>
+                                <th>Usuário</th>
+                                <th>Senha Informada</th>
+                                <th>Resposta</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in logs %}
+                            <tr>
+                                <td>{{ log.authdate|date:"d/m/Y H:i:s" }}</td>
+                                <td>{{ log.nas_ip_address }}</td>
+                                <td>{{ log.username }}</td>
+                                <td>{{ log.pass_field }}</td>
+                                <td>
+                                    {% if log.reply == 'Access-Accept' %}
+                                        <span class="badge bg-success">{{ log.reply }}</span>
+                                    {% elif log.reply == 'Access-Reject' %}
+                                        <span class="badge bg-danger">{{ log.reply }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ log.reply }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    Nenhum log de autenticação encontrado para os IPs deste cliente.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 {% endblock %}
