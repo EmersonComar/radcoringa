@@ -22,3 +22,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path('', include('coringa.urls'))
 ]
+
+handler404 = 'coringa.views.error_404'
+handler403 = 'coringa.views.error_403'
+handler500 = 'coringa.views.error_500'
