@@ -117,6 +117,19 @@ class ClienteIP(models.Model):
         verbose_name_plural = 'IPs dos clientes'
 
 
+    def clean(self):
+        super().clean()
+        if hasattr(self, 'cliente') and self.cliente:
+            qs = ClienteIP.objects.filter(cliente=self.cliente)
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+            if qs.count() >= 5:
+                raise ValidationError(_("Um provedor pode registrar no máximo 5 IPs públicos de CCR."))
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._original_endereco_ip = self.endereco_ip
@@ -183,6 +196,45 @@ class Nasreload(models.Model):
 
     def __str__(self):
         return f"{self.nasipaddress} - {self.reloadtime}"
+
+
+class Radacct(models.Model):
+    radacctid = models.BigAutoField(primary_key=True)
+    acctsessionid = models.CharField(max_length=64, default='')
+    acctuniqueid = models.CharField(max_length=32, default='', unique=True)
+    username = models.CharField(max_length=64, default='')
+    realm = models.CharField(max_length=64, blank=True, null=True, default='')
+    nasipaddress = models.CharField(max_length=15, default='')
+    nasportid = models.CharField(max_length=32, blank=True, null=True)
+    nasporttype = models.CharField(max_length=32, blank=True, null=True)
+    acctstarttime = models.DateTimeField(blank=True, null=True)
+    acctupdatetime = models.DateTimeField(blank=True, null=True)
+    acctstoptime = models.DateTimeField(blank=True, null=True)
+    acctinterval = models.IntegerField(blank=True, null=True)
+    acctsessiontime = models.PositiveIntegerField(blank=True, null=True)
+    acctauthentic = models.CharField(max_length=32, blank=True, null=True)
+    connectinfo_start = models.CharField(max_length=128, blank=True, null=True)
+    connectinfo_stop = models.CharField(max_length=128, blank=True, null=True)
+    acctinputoctets = models.BigIntegerField(blank=True, null=True)
+    acctoutputoctets = models.BigIntegerField(blank=True, null=True)
+    calledstationid = models.CharField(max_length=50, default='')
+    callingstationid = models.CharField(max_length=50, default='')
+    acctterminatecause = models.CharField(max_length=32, default='')
+    servicetype = models.CharField(max_length=32, blank=True, null=True)
+    framedprotocol = models.CharField(max_length=32, blank=True, null=True)
+    framedipaddress = models.CharField(max_length=15, default='')
+    framedipv6address = models.CharField(max_length=45, default='')
+    framedipv6prefix = models.CharField(max_length=45, default='')
+    framedinterfaceid = models.CharField(max_length=44, default='')
+    delegatedipv6prefix = models.CharField(max_length=45, default='')
+    class_field = models.CharField(db_column='class', max_length=64, blank=True, null=True)
+
+    class Meta:
+        db_table = 'radacct'
+        managed = False
+
+    def __str__(self):
+        return f"{self.username} - {self.nasipaddress} - {self.acctsessiontime}s"
 
 
 from django.db.models.signals import post_save, post_delete

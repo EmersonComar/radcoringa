@@ -1,0 +1,144 @@
+{% extends 'coringa/base.html' %}
+{% block title %}RADCoringa - Logs AAA{% endblock %}
+
+{% block content %}
+<div class="row mb-3 align-items-center">
+    <div class="col-md-6">
+        <h2 class="h4">Histórico de Logs AAA</h2>
+    </div>
+    <div class="col-md-6 text-md-end">
+        <a href="?export=csv{% if filtered_cliente %}&cliente={{ filtered_cliente }}{% endif %}{% if filtered_data_inicio %}&data_inicio={{ filtered_data_inicio }}{% endif %}{% if filtered_data_fim %}&data_fim={{ filtered_data_fim }}{% endif %}{% if filtered_status %}&status={{ filtered_status }}{% endif %}{% if filtered_username %}&username={{ filtered_username }}{% endif %}" class="btn btn-success btn-sm">
+            Exportar CSV
+        </a>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-light">
+        <h6 class="mb-0 fw-bold">Filtros de Busca</h6>
+    </div>
+    <div class="card-body">
+        <form method="GET" action="" class="row g-3">
+            <div class="col-md-3">
+                <label for="cliente" class="form-label small fw-bold">Provedor (ISP)</label>
+                <select name="cliente" id="cliente" class="form-select form-select-sm">
+                    <option value="">-- Todos --</option>
+                    {% for c in clientes %}
+                    <option value="{{ c.id }}" {% if filtered_cliente == c.id %}selected{% endif %}>{{ c.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="col-md-2">
+                <label for="status" class="form-label small fw-bold">Status/Resposta</label>
+                <select name="status" id="status" class="form-select form-select-sm">
+                    <option value="">-- Todos --</option>
+                    <option value="Access-Accept" {% if filtered_status == "Access-Accept" %}selected{% endif %}>Access-Accept</option>
+                    <option value="Access-Reject" {% if filtered_status == "Access-Reject" %}selected{% endif %}>Access-Reject</option>
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <label for="username" class="form-label small fw-bold">Usuário (Username)</label>
+                <input type="text" name="username" id="username" class="form-control form-control-sm" placeholder="Ex: joao@provedor" value="{{ filtered_username|default:'' }}">
+            </div>
+
+            <div class="col-md-2">
+                <label for="data_inicio" class="form-label small fw-bold">Data Início</label>
+                <input type="datetime-local" name="data_inicio" id="data_inicio" class="form-control form-control-sm" value="{{ filtered_data_inicio|default:'' }}">
+            </div>
+
+            <div class="col-md-2">
+                <label for="data_fim" class="form-label small fw-bold">Data Fim</label>
+                <input type="datetime-local" name="data_fim" id="data_fim" class="form-control form-control-sm" value="{{ filtered_data_fim|default:'' }}">
+            </div>
+
+            <div class="col-12 text-end">
+                <a href="{% url 'logs_aaa' %}" class="btn btn-outline-secondary btn-sm me-2">Limpar Filtros</a>
+                <button type="submit" class="btn btn-primary btn-sm">Filtrar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tabela de Resultados -->
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Data/Hora</th>
+                        <th>Provedor</th>
+                        <th>Usuário</th>
+                        <th>Senha Usada</th>
+                        <th>IP do NAS (CCR)</th>
+                        <th>Status/Resposta</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td>{{ log.authdate|date:"d/m/Y H:i:s" }}</td>
+                        <td class="text-break">{{ log.cliente_nome }}</td>
+                        <td class="text-break">{{ log.username }}</td>
+                        <td><code>{{ log.pass_field }}</code></td>
+                        <td>{{ log.nas_ip_address }}</td>
+                        <td>
+                            <span class="badge {% if log.reply == 'Access-Accept' %}bg-success{% elif log.reply == 'Access-Reject' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                {{ log.reply }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">Nenhum registro de log encontrado para os filtros selecionados.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    {% if logs.has_other_pages %}
+    <div class="card-footer d-flex justify-content-end bg-white">
+        <nav aria-label="Navegação de página">
+            <ul class="pagination mb-2 mt-2">
+                {% if logs.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ logs.previous_page_number }}{% if filtered_cliente %}&cliente={{ filtered_cliente }}{% endif %}{% if filtered_data_inicio %}&data_inicio={{ filtered_data_inicio }}{% endif %}{% if filtered_data_fim %}&data_fim={{ filtered_data_fim }}{% endif %}{% if filtered_status %}&status={{ filtered_status }}{% endif %}{% if filtered_username %}&username={{ filtered_username }}{% endif %}">Anterior</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">Anterior</span>
+                </li>
+                {% endif %}
+
+                {% for i in logs.paginator.page_range %}
+                    {% if logs.number == i %}
+                    <li class="page-item active" aria-current="page">
+                        <span class="page-link">{{ i }}</span>
+                    </li>
+                    {% else %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ i }}{% if filtered_cliente %}&cliente={{ filtered_cliente }}{% endif %}{% if filtered_data_inicio %}&data_inicio={{ filtered_data_inicio }}{% endif %}{% if filtered_data_fim %}&data_fim={{ filtered_data_fim }}{% endif %}{% if filtered_status %}&status={{ filtered_status }}{% endif %}{% if filtered_username %}&username={{ filtered_username }}{% endif %}">{{ i }}</a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if logs.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ logs.next_page_number }}{% if filtered_cliente %}&cliente={{ filtered_cliente }}{% endif %}{% if filtered_data_inicio %}&data_inicio={{ filtered_data_inicio }}{% endif %}{% if filtered_data_fim %}&data_fim={{ filtered_data_fim }}{% endif %}{% if filtered_status %}&status={{ filtered_status }}{% endif %}{% if filtered_username %}&username={{ filtered_username }}{% endif %}">Próxima</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">Próxima</span>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

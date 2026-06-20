@@ -31,6 +31,7 @@ authorize {
         }
     }
 
+    eap
     pap
 }
 
@@ -52,6 +53,7 @@ authenticate {
     Auth-Type MS-CHAP {
         mschap
     }
+    eap
 }
 
 preacct {
