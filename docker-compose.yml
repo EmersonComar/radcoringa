@@ -27,8 +27,8 @@ services:
     env_file:
       - .env
     ports:
-      - "1812:1812/udp"
-      - "1813:1813/udp"
+      - "1812:1812/tcp"
+      - "1813:1813/tcp"
     depends_on:
       mariadb:
         condition: service_healthy

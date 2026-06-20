@@ -3,13 +3,15 @@ server default {
 listen {
     type = auth
     ipaddr = *
-    port = 0
+    port = 1812
+    proto = tcp
 }
 
 listen {
     type = acct
     ipaddr = *
-    port = 0
+    port = 1813
+    proto = tcp
 }
 
 authorize {
