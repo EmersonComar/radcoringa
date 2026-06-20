@@ -12,7 +12,11 @@ def gerar_secret(tamanho=16):
 
 def validar_ip(valor):
     try:
-        IPv4Network(valor, strict=False)
+        net = IPv4Network(valor, strict=False)
+        if net.prefixlen < 24:
+            raise ValidationError(
+                _('Não é permitido cadastrar blocos de IP maiores que /24 (ex: /15, /8).')
+            )
     except (ValueError, TypeError):
         raise ValidationError(
             _('%(valor)s não é um IP/Rede válido'),

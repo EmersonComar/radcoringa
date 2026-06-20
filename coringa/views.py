@@ -6,6 +6,8 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponse
 from django.utils.dateparse import parse_datetime
 from django.utils import timezone
+from django.contrib.auth import views as auth_views
+from django.core.cache import cache
 
 from .forms import ClienteForm, IPFormSet
 from coringa.models import Cliente, ClienteIP, Radpostauth, Radacct
@@ -156,7 +158,7 @@ def error_500(request):
     return render(request, 'coringa/500.html', status=500)
 
 def BillingAccounting(request):
-    expected_token = os.getenv('BILLING_API_TOKEN', 'radcoringa-billing-token-2026')
+    expected_token = os.getenv('BILLING_API_TOKEN')
     
     auth_header = request.headers.get('Authorization')
     token = None
@@ -339,3 +341,34 @@ def LogsAAA(request):
     }
     
     return render(request, 'coringa/logs.html', context)
+
+
+class CoringaLoginView(auth_views.LoginView):
+    template_name = 'coringa/login.html'
+    
+    def dispatch(self, request, *args, **kwargs):
+        if request.method == 'POST':
+            ip = request.META.get('REMOTE_ADDR')
+            cache_key = f"login_attempts_{ip}"
+            attempts = cache.get(cache_key, 0)
+            
+            if attempts >= 5:
+                return render(request, self.template_name, {
+                    'form': self.get_form(),
+                    'error_message': 'Muitas tentativas de login. Por favor, aguarde 1 minuto.'
+                }, status=429)
+                
+        return super().dispatch(request, *args, **kwargs)
+        
+    def form_invalid(self, form):
+        ip = self.request.META.get('REMOTE_ADDR')
+        cache_key = f"login_attempts_{ip}"
+        attempts = cache.get(cache_key, 0)
+        cache.set(cache_key, attempts + 1, timeout=60)
+        return super().form_invalid(form)
+        
+    def form_valid(self, form):
+        ip = self.request.META.get('REMOTE_ADDR')
+        cache_key = f"login_attempts_{ip}"
+        cache.delete(cache_key)
+        return super().form_valid(form)

@@ -1,9 +1,9 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
-from coringa.views import Home, Cadastro, Editar, Desativar, Detalhes, Historico, HistoricoDetalhes, Ativar, BillingAccounting, LogsAAA
+from coringa.views import Home, Cadastro, Editar, Desativar, Detalhes, Historico, HistoricoDetalhes, Ativar, BillingAccounting, LogsAAA, CoringaLoginView
 
 urlpatterns = [
-    path('login/', auth_views.LoginView.as_view(template_name='coringa/login.html'), name='login'),
+    path('login/', CoringaLoginView.as_view(), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('', Home, name='home'),
     path('cadastro/', Cadastro, name='Cadastro'),
