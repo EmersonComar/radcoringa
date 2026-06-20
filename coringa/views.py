@@ -93,9 +93,19 @@ def Detalhes(request, pk):
     cliente = get_object_or_404(Cliente, pk=pk)
     ips = ClienteIP.objects.filter(cliente=cliente)
     
-    # Busca logs baseados nas strings exatas de IP salvas
+    # Busca logs baseados nas strings de IP salvas
     ip_list = ips.values_list('endereco_ip', flat=True)
-    logs = Radpostauth.objects.filter(nas_ip_address__in=ip_list).order_by('-authdate')[:5]
+    clean_ips = [ip.split('/')[0] for ip in ip_list]
+    todos_logs = obter_logs_unificados(clean_ips=clean_ips, limit=1000)
+    
+    paginator = Paginator(todos_logs, 10)
+    page = request.GET.get('page')
+    try:
+        logs = paginator.page(page)
+    except PageNotAnInteger:
+        logs = paginator.page(1)
+    except EmptyPage:
+        logs = paginator.page(paginator.num_pages)
     
     context = { 
         'user': str(request.user),
@@ -134,10 +144,26 @@ def Historico(request):
 def HistoricoDetalhes(request, pk):
     cliente = get_object_or_404(Cliente, pk=pk)
     ips = ClienteIP.objects.filter(cliente=cliente)
+    
+    # Busca logs baseados nas strings de IP salvas
+    ip_list = ips.values_list('endereco_ip', flat=True)
+    clean_ips = [ip.split('/')[0] for ip in ip_list]
+    todos_logs = obter_logs_unificados(clean_ips=clean_ips, limit=1000)
+    
+    paginator = Paginator(todos_logs, 10)
+    page = request.GET.get('page')
+    try:
+        logs = paginator.page(page)
+    except PageNotAnInteger:
+        logs = paginator.page(1)
+    except EmptyPage:
+        logs = paginator.page(paginator.num_pages)
+    
     context = { 
         'user': str(request.user),
         'cliente': cliente,
-        'ips': ips
+        'ips': ips,
+        'logs': logs
     }
     return render(request, 'coringa/historico_detalhes.html', context)
 
@@ -242,6 +268,89 @@ def BillingAccounting(request):
         'data': data
     })
 
+def obter_logs_unificados(clean_ips=None, dt_start=None, dt_end=None, status_reply=None, username=None, log_type='ambos', limit=2000):
+    logs_postauth = []
+    logs_acct = []
+    
+    # 1. Buscar Radpostauth se aplicável
+    if log_type in ('ambos', 'auth') and status_reply not in ('Acct-Active', 'Acct-Stop'):
+        qs = Radpostauth.objects.all()
+        if clean_ips is not None:
+            qs = qs.filter(nas_ip_address__in=clean_ips)
+        if dt_start:
+            qs = qs.filter(authdate__gte=dt_start)
+        if dt_end:
+            qs = qs.filter(authdate__lte=dt_end)
+        if status_reply and status_reply in ('Access-Accept', 'Access-Reject'):
+            qs = qs.filter(reply=status_reply)
+        if username:
+            qs = qs.filter(username__icontains=username)
+            
+        qs = qs.order_by('-authdate')[:limit]
+        
+        for log in qs:
+            logs_postauth.append({
+                'date': log.authdate,
+                'tipo': 'Autenticação',
+                'nas_ip': log.nas_ip_address,
+                'username': log.username,
+                'detalhe': log.pass_field,
+                'status': log.reply,
+                'is_auth': True,
+            })
+            
+    # 2. Buscar Radacct se aplicável
+    if log_type in ('ambos', 'acct') and status_reply not in ('Access-Accept', 'Access-Reject'):
+        qs = Radacct.objects.all()
+        if clean_ips is not None:
+            qs = qs.filter(nasipaddress__in=clean_ips)
+        if dt_start:
+            qs = qs.filter(acctstarttime__gte=dt_start)
+        if dt_end:
+            qs = qs.filter(acctstarttime__lte=dt_end)
+        if status_reply:
+            if status_reply == 'Acct-Active':
+                qs = qs.filter(acctstoptime__isnull=True)
+            elif status_reply == 'Acct-Stop':
+                qs = qs.filter(acctstoptime__isnull=False)
+        if username:
+            qs = qs.filter(username__icontains=username)
+            
+        qs = qs.order_by('-acctstarttime')[:limit]
+        
+        for log in qs:
+            detalhe = f"IP: {log.framedipaddress}" if log.framedipaddress else "IP: N/A"
+            if log.acctsessiontime:
+                seconds = log.acctsessiontime
+                hours = seconds // 3600
+                minutes = (seconds % 3600) // 60
+                remaining_seconds = seconds % 60
+                duration_str = ""
+                if hours > 0:
+                    duration_str += f"{hours}h "
+                if minutes > 0 or hours > 0:
+                    duration_str += f"{minutes}m "
+                duration_str += f"{remaining_seconds}s"
+                detalhe += f" | {duration_str}"
+                
+            status_str = "Acct-Active" if not log.acctstoptime else "Acct-Stop"
+            if log.acctstoptime and log.acctterminatecause:
+                status_str += f" ({log.acctterminatecause})"
+                
+            logs_acct.append({
+                'date': log.acctstarttime or timezone.now(),
+                'tipo': 'Contabilidade',
+                'nas_ip': log.nasipaddress,
+                'username': log.username,
+                'detalhe': detalhe,
+                'status': status_str,
+                'is_auth': False,
+            })
+            
+    todos_logs = logs_postauth + logs_acct
+    todos_logs.sort(key=lambda x: x['date'], reverse=True)
+    return todos_logs
+
 @login_required
 def LogsAAA(request):
     cliente_id = request.GET.get('cliente')
@@ -249,39 +358,51 @@ def LogsAAA(request):
     data_fim = request.GET.get('data_fim')
     status_reply = request.GET.get('status')
     username = request.GET.get('username')
+    log_type = request.GET.get('log_type', 'ambos')
     
-    queryset = Radpostauth.objects.all()
-    
+    clean_ips = None
     if cliente_id:
         try:
             cliente = Cliente.objects.get(pk=cliente_id)
             client_ips = list(cliente.Lista_ips.values_list('endereco_ip', flat=True))
             clean_ips = [ip.split('/')[0] for ip in client_ips]
-            queryset = queryset.filter(nas_ip_address__in=clean_ips)
         except Cliente.DoesNotExist:
             pass
             
+    dt_start = None
     if data_inicio:
         dt_start = parse_datetime(data_inicio)
-        if dt_start:
-            if timezone.is_naive(dt_start):
-                dt_start = timezone.make_aware(dt_start, timezone.get_current_timezone())
-            queryset = queryset.filter(authdate__gte=dt_start)
+        if dt_start and timezone.is_naive(dt_start):
+            dt_start = timezone.make_aware(dt_start, timezone.get_current_timezone())
+            
+    dt_end = None
     if data_fim:
         dt_end = parse_datetime(data_fim)
-        if dt_end:
-            if timezone.is_naive(dt_end):
-                dt_end = timezone.make_aware(dt_end, timezone.get_current_timezone())
-            queryset = queryset.filter(authdate__lte=dt_end)
+        if dt_end and timezone.is_naive(dt_end):
+            dt_end = timezone.make_aware(dt_end, timezone.get_current_timezone())
             
-    if status_reply:
-        queryset = queryset.filter(reply=status_reply)
-        
-    if username:
-        queryset = queryset.filter(username__icontains=username)
-        
-    queryset = queryset.order_by('-authdate')
+    # Obter logs unificados
+    limit = 5000 if request.GET.get('export') == 'csv' else 2000
+    todos_logs = obter_logs_unificados(
+        clean_ips=clean_ips,
+        dt_start=dt_start,
+        dt_end=dt_end,
+        status_reply=status_reply,
+        username=username,
+        log_type=log_type,
+        limit=limit
+    )
     
+    # Preencher nome do cliente
+    all_clients = Cliente.objects.all().prefetch_related('Lista_ips')
+    ip_to_client_name = {}
+    for c in all_clients:
+        for ip_obj in c.Lista_ips.all():
+            ip_to_client_name[ip_obj.endereco_ip.split('/')[0]] = c.nome
+            
+    for log in todos_logs:
+        log['cliente_nome'] = ip_to_client_name.get(log['nas_ip'], 'Desconhecido')
+        
     if request.GET.get('export') == 'csv':
         response = HttpResponse(content_type='text/csv; charset=utf-8')
         response['Content-Disposition'] = f'attachment; filename="logs_aaa_{timezone.now().strftime("%Y%m%d_%H%M%S")}.csv"'
@@ -289,27 +410,21 @@ def LogsAAA(request):
         response.write('\ufeff'.encode('utf8'))
         
         writer = csv.writer(response, delimiter=';')
-        writer.writerow(['Data/Hora', 'Provedor', 'Usuário', 'Senha Usada', 'IP do NAS (CCR)', 'Status/Resposta'])
+        writer.writerow(['Data/Hora', 'Tipo', 'Provedor', 'Usuário', 'Senha/IP Concedido', 'IP do NAS (CCR)', 'Status/Resposta'])
         
-        all_clients = Cliente.objects.all().prefetch_related('Lista_ips')
-        ip_to_client_name = {}
-        for c in all_clients:
-            for ip_obj in c.Lista_ips.all():
-                ip_to_client_name[ip_obj.endereco_ip.split('/')[0]] = c.nome
-                
-        for log in queryset[:5000]:
-            client_name = ip_to_client_name.get(log.nas_ip_address, 'Desconhecido')
+        for log in todos_logs[:5000]:
             writer.writerow([
-                log.authdate.astimezone(timezone.get_current_timezone()).strftime('%d/%m/%Y %H:%M:%S') if log.authdate else '',
-                client_name,
-                log.username,
-                log.pass_field,
-                log.nas_ip_address,
-                log.reply
+                log['date'].astimezone(timezone.get_current_timezone()).strftime('%d/%m/%Y %H:%M:%S') if log['date'] else '',
+                log['tipo'],
+                log['cliente_nome'],
+                log['username'],
+                log['detalhe'],
+                log['nas_ip'],
+                log['status']
             ])
         return response
         
-    paginator = Paginator(queryset, 20)
+    paginator = Paginator(todos_logs, 20)
     page = request.GET.get('page')
     try:
         logs = paginator.page(page)
@@ -320,15 +435,6 @@ def LogsAAA(request):
         
     clientes = Cliente.objects.all().order_by('nome')
     
-    all_clients = Cliente.objects.all().prefetch_related('Lista_ips')
-    ip_to_client_name = {}
-    for c in all_clients:
-        for ip_obj in c.Lista_ips.all():
-            ip_to_client_name[ip_obj.endereco_ip.split('/')[0]] = c.nome
-            
-    for log in logs:
-        log.cliente_nome = ip_to_client_name.get(log.nas_ip_address, 'Desconhecido')
-        
     context = {
         'user': str(request.user),
         'logs': logs,
@@ -338,6 +444,7 @@ def LogsAAA(request):
         'filtered_data_fim': data_fim,
         'filtered_status': status_reply,
         'filtered_username': username,
+        'filtered_log_type': log_type,
     }
     
     return render(request, 'coringa/logs.html', context)

@@ -45,4 +45,102 @@
         </div>
     </div>
 </div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0">Logs de Histórico do Provedor (Autenticação e Contabilidade)</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Data/Hora</th>
+                                <th>Tipo</th>
+                                <th>Usuário</th>
+                                <th>Senha/IP Concedido</th>
+                                <th>IP do NAS (CCR)</th>
+                                <th>Resposta/Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in logs %}
+                            <tr>
+                                <td>{{ log.date|date:"d/m/Y H:i:s" }}</td>
+                                <td>
+                                    <span class="badge {% if log.is_auth %}bg-primary{% else %}bg-info text-dark{% endif %}">
+                                        {{ log.tipo }}
+                                    </span>
+                                </td>
+                                <td>{{ log.username }}</td>
+                                <td>
+                                    {% if log.is_auth %}
+                                        <code>{{ log.detalhe }}</code>
+                                    {% else %}
+                                        {{ log.detalhe }}
+                                    {% endif %}
+                                </td>
+                                <td>{{ log.nas_ip }}</td>
+                                <td>
+                                    <span class="badge {% if log.status == 'Access-Accept' %}bg-success{% elif log.status == 'Access-Reject' %}bg-danger{% elif 'Acct-Active' in log.status %}bg-primary{% else %}bg-secondary{% endif %}">
+                                        {{ log.status }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-4">
+                                    Nenhum log de autenticação ou contabilidade encontrado para os IPs deste cliente.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {% if logs.has_other_pages %}
+            <div class="card-footer d-flex justify-content-end bg-white">
+                <nav aria-label="Navegação de página">
+                    <ul class="pagination mb-2 mt-2">
+                        {% if logs.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ logs.previous_page_number }}">Anterior</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">Anterior</span>
+                        </li>
+                        {% endif %}
+
+                        {% for i in logs.paginator.page_range %}
+                            {% if logs.number == i %}
+                            <li class="page-item active" aria-current="page">
+                                <span class="page-link">{{ i }}</span>
+                            </li>
+                            {% else %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ i }}">{{ i }}</a>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if logs.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ logs.next_page_number }}">Próxima</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">Próxima</span>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
 {% endblock %}

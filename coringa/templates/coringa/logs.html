@@ -7,7 +7,7 @@
         <h2 class="h4">Histórico de Logs AAA</h2>
     </div>
     <div class="col-md-6 text-md-end">
-        <a href="?export=csv{% if filtered_cliente %}&cliente={{ filtered_cliente }}{% endif %}{% if filtered_data_inicio %}&data_inicio={{ filtered_data_inicio }}{% endif %}{% if filtered_data_fim %}&data_fim={{ filtered_data_fim }}{% endif %}{% if filtered_status %}&status={{ filtered_status }}{% endif %}{% if filtered_username %}&username={{ filtered_username }}{% endif %}" class="btn btn-success btn-sm">
+        <a href="?export=csv{% if filtered_cliente %}&cliente={{ filtered_cliente }}{% endif %}{% if filtered_data_inicio %}&data_inicio={{ filtered_data_inicio }}{% endif %}{% if filtered_data_fim %}&data_fim={{ filtered_data_fim }}{% endif %}{% if filtered_status %}&status={{ filtered_status }}{% endif %}{% if filtered_username %}&username={{ filtered_username }}{% endif %}{% if filtered_log_type %}&log_type={{ filtered_log_type }}{% endif %}" class="btn btn-success btn-sm">
             Exportar CSV
         </a>
     </div>
@@ -20,7 +20,7 @@
     </div>
     <div class="card-body">
         <form method="GET" action="" class="row g-3">
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label for="cliente" class="form-label small fw-bold">Provedor (ISP)</label>
                 <select name="cliente" id="cliente" class="form-select form-select-sm">
                     <option value="">-- Todos --</option>
@@ -29,17 +29,32 @@
                     {% endfor %}
                 </select>
             </div>
+
+            <div class="col-md-2">
+                <label for="log_type" class="form-label small fw-bold">Tipo de Log</label>
+                <select name="log_type" id="log_type" class="form-select form-select-sm">
+                    <option value="ambos" {% if filtered_log_type == "ambos" %}selected{% endif %}>Ambos</option>
+                    <option value="auth" {% if filtered_log_type == "auth" %}selected{% endif %}>Autenticação</option>
+                    <option value="acct" {% if filtered_log_type == "acct" %}selected{% endif %}>Contabilidade</option>
+                </select>
+            </div>
             
             <div class="col-md-2">
                 <label for="status" class="form-label small fw-bold">Status/Resposta</label>
                 <select name="status" id="status" class="form-select form-select-sm">
                     <option value="">-- Todos --</option>
-                    <option value="Access-Accept" {% if filtered_status == "Access-Accept" %}selected{% endif %}>Access-Accept</option>
-                    <option value="Access-Reject" {% if filtered_status == "Access-Reject" %}selected{% endif %}>Access-Reject</option>
+                    <optgroup label="Autenticação">
+                        <option value="Access-Accept" {% if filtered_status == "Access-Accept" %}selected{% endif %}>Access-Accept</option>
+                        <option value="Access-Reject" {% if filtered_status == "Access-Reject" %}selected{% endif %}>Access-Reject</option>
+                    </optgroup>
+                    <optgroup label="Contabilidade">
+                        <option value="Acct-Active" {% if filtered_status == "Acct-Active" %}selected{% endif %}>Ativo (Acct-Active)</option>
+                        <option value="Acct-Stop" {% if filtered_status == "Acct-Stop" %}selected{% endif %}>Desconectado (Acct-Stop)</option>
+                    </optgroup>
                 </select>
             </div>
 
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label for="username" class="form-label small fw-bold">Usuário (Username)</label>
                 <input type="text" name="username" id="username" class="form-control form-control-sm" placeholder="Ex: joao@provedor" value="{{ filtered_username|default:'' }}">
             </div>
@@ -70,9 +85,10 @@
                 <thead class="table-light">
                     <tr>
                         <th>Data/Hora</th>
+                        <th>Tipo</th>
                         <th>Provedor</th>
                         <th>Usuário</th>
-                        <th>Senha Usada</th>
+                        <th>Senha/IP Concedido</th>
                         <th>IP do NAS (CCR)</th>
                         <th>Status/Resposta</th>
                     </tr>
@@ -80,20 +96,31 @@
                 <tbody>
                     {% for log in logs %}
                     <tr>
-                        <td>{{ log.authdate|date:"d/m/Y H:i:s" }}</td>
+                        <td>{{ log.date|date:"d/m/Y H:i:s" }}</td>
+                        <td>
+                            <span class="badge {% if log.is_auth %}bg-primary{% else %}bg-info text-dark{% endif %}">
+                                {{ log.tipo }}
+                            </span>
+                        </td>
                         <td class="text-break">{{ log.cliente_nome }}</td>
                         <td class="text-break">{{ log.username }}</td>
-                        <td><code>{{ log.pass_field }}</code></td>
-                        <td>{{ log.nas_ip_address }}</td>
                         <td>
-                            <span class="badge {% if log.reply == 'Access-Accept' %}bg-success{% elif log.reply == 'Access-Reject' %}bg-danger{% else %}bg-secondary{% endif %}">
-                                {{ log.reply }}
+                            {% if log.is_auth %}
+                                <code>{{ log.detalhe }}</code>
+                            {% else %}
+                                {{ log.detalhe }}
+                            {% endif %}
+                        </td>
+                        <td>{{ log.nas_ip }}</td>
+                        <td>
+                            <span class="badge {% if log.status == 'Access-Accept' %}bg-success{% elif log.status == 'Access-Reject' %}bg-danger{% elif 'Acct-Active' in log.status %}bg-primary{% else %}bg-secondary{% endif %}">
+                                {{ log.status }}
                             </span>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center text-muted py-4">Nenhum registro de log encontrado para os filtros selecionados.</td>
+                        <td colspan="7" class="text-center text-muted py-4">Nenhum registro de log encontrado para os filtros selecionados.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -107,7 +134,7 @@
             <ul class="pagination mb-2 mt-2">
                 {% if logs.has_previous %}
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ logs.previous_page_number }}{% if filtered_cliente %}&cliente={{ filtered_cliente }}{% endif %}{% if filtered_data_inicio %}&data_inicio={{ filtered_data_inicio }}{% endif %}{% if filtered_data_fim %}&data_fim={{ filtered_data_fim }}{% endif %}{% if filtered_status %}&status={{ filtered_status }}{% endif %}{% if filtered_username %}&username={{ filtered_username }}{% endif %}">Anterior</a>
+                    <a class="page-link" href="?page={{ logs.previous_page_number }}{% if filtered_cliente %}&cliente={{ filtered_cliente }}{% endif %}{% if filtered_data_inicio %}&data_inicio={{ filtered_data_inicio }}{% endif %}{% if filtered_data_fim %}&data_fim={{ filtered_data_fim }}{% endif %}{% if filtered_status %}&status={{ filtered_status }}{% endif %}{% if filtered_username %}&username={{ filtered_username }}{% endif %}{% if filtered_log_type %}&log_type={{ filtered_log_type }}{% endif %}">Anterior</a>
                 </li>
                 {% else %}
                 <li class="page-item disabled">
@@ -122,14 +149,14 @@
                     </li>
                     {% else %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ i }}{% if filtered_cliente %}&cliente={{ filtered_cliente }}{% endif %}{% if filtered_data_inicio %}&data_inicio={{ filtered_data_inicio }}{% endif %}{% if filtered_data_fim %}&data_fim={{ filtered_data_fim }}{% endif %}{% if filtered_status %}&status={{ filtered_status }}{% endif %}{% if filtered_username %}&username={{ filtered_username }}{% endif %}">{{ i }}</a>
+                        <a class="page-link" href="?page={{ i }}{% if filtered_cliente %}&cliente={{ filtered_cliente }}{% endif %}{% if filtered_data_inicio %}&data_inicio={{ filtered_data_inicio }}{% endif %}{% if filtered_data_fim %}&data_fim={{ filtered_data_fim }}{% endif %}{% if filtered_status %}&status={{ filtered_status }}{% endif %}{% if filtered_username %}&username={{ filtered_username }}{% endif %}{% if filtered_log_type %}&log_type={{ filtered_log_type }}{% endif %}">{{ i }}</a>
                     </li>
                     {% endif %}
                 {% endfor %}
 
                 {% if logs.has_next %}
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ logs.next_page_number }}{% if filtered_cliente %}&cliente={{ filtered_cliente }}{% endif %}{% if filtered_data_inicio %}&data_inicio={{ filtered_data_inicio }}{% endif %}{% if filtered_data_fim %}&data_fim={{ filtered_data_fim }}{% endif %}{% if filtered_status %}&status={{ filtered_status }}{% endif %}{% if filtered_username %}&username={{ filtered_username }}{% endif %}">Próxima</a>
+                    <a class="page-link" href="?page={{ logs.next_page_number }}{% if filtered_cliente %}&cliente={{ filtered_cliente }}{% endif %}{% if filtered_data_inicio %}&data_inicio={{ filtered_data_inicio }}{% endif %}{% if filtered_data_fim %}&data_fim={{ filtered_data_fim }}{% endif %}{% if filtered_status %}&status={{ filtered_status }}{% endif %}{% if filtered_username %}&username={{ filtered_username }}{% endif %}{% if filtered_log_type %}&log_type={{ filtered_log_type }}{% endif %}">Próxima</a>
                 </li>
                 {% else %}
                 <li class="page-item disabled">
