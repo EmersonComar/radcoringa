@@ -36,6 +36,7 @@ class Migration(migrations.Migration):
                 "verbose_name": "IP da Pool",
                 "verbose_name_plural": "IPs da Pool",
                 "db_table": "radippool",
+                "managed": False,
             },
         ),
         migrations.AddField(

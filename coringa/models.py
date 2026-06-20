@@ -275,6 +275,7 @@ class Radippool(models.Model):
 
     class Meta:
         db_table = 'radippool'
+        managed = False
         verbose_name = 'IP da Pool'
         verbose_name_plural = 'IPs da Pool'
 
