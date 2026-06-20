@@ -15,7 +15,7 @@ def validar_ip(valor):
         net = IPv4Network(valor, strict=False)
         if net.prefixlen < 24:
             raise ValidationError(
-                _('Não é permitido cadastrar blocos de IP maiores que /24 (ex: /15, /8).')
+                _('Não é permitido cadastrar blocos de IP maiores que /24')
             )
     except (ValueError, TypeError):
         raise ValidationError(
@@ -245,7 +245,20 @@ from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.utils import timezone
 
+import threading
 import subprocess
+
+def _restart_container_background():
+    try:
+        subprocess.run(
+            ["docker", "container", "restart", "radcoringa-radius"],
+            check=True,
+            capture_output=True
+        )
+    except subprocess.CalledProcessError as e:
+        print(f"Falha ao restartar o container: {e.stderr.decode('utf-8')}")
+    except FileNotFoundError:
+        print("Comando 'docker' não encontrado no PATH.")
 
 def trigger_nas_reload(ip_address):
     try:
@@ -255,16 +268,9 @@ def trigger_nas_reload(ip_address):
             defaults={'reloadtime': timezone.now()}
         )
         
-        try:
-            subprocess.run(
-                ["docker", "container", "restart", "radcoringa-radius"],
-                check=True,
-                capture_output=True
-            )
-        except subprocess.CalledProcessError as e:
-            print(f"Falha ao enviar SIGHUP ao container: {e.stderr.decode('utf-8')}")
-        except FileNotFoundError:
-            print("Comando 'docker' não encontrado no PATH.")
+        bg_thread = threading.Thread(target=_restart_container_background)
+        bg_thread.daemon = True
+        bg_thread.start()
 
     except Exception as e:
         print(f"Erro inesperado em trigger_nas_reload: {e}")
