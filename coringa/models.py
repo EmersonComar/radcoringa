@@ -123,7 +123,7 @@ class ClienteIP(models.Model):
 
     def clean(self):
         super().clean()
-        if hasattr(self, 'cliente') and self.cliente:
+        if hasattr(self, 'cliente') and self.cliente and self.cliente.pk is not None:
             qs = ClienteIP.objects.filter(cliente=self.cliente)
             if self.pk:
                 qs = qs.exclude(pk=self.pk)
