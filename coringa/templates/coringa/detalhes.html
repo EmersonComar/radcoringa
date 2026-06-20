@@ -27,6 +27,34 @@
     </div>
 
     <div class="col-md-8">
+        {% if pool_data %}
+        <div class="card mb-4 border-info">
+            <div class="card-header bg-info text-dark d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold"><i class="fas fa-network-wired me-2"></i>IP Pool Configurada</h5>
+                <span class="badge bg-dark">{{ pool_data.bloco }}</span>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-4 border-end">
+                        <div class="h3 mb-0 text-success">{{ pool_data.livres }}</div>
+                        <div class="text-muted small">IPs Livres</div>
+                    </div>
+                    <div class="col-md-4 border-end">
+                        <div class="h3 mb-0 text-warning">{{ pool_data.ocupados }}</div>
+                        <div class="text-muted small">IPs Alocados</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="h3 mb-0 text-primary">{{ pool_data.total }}</div>
+                        <div class="text-muted small">Total de IPs</div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted">Nome da Pool no FreeRADIUS: <code>{{ pool_data.nome }}</code></small>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <div class="card">
             <div class="card-header bg-dark text-white">
                 <h5 class="mb-0">IP's do Cliente</h5>

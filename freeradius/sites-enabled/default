@@ -18,7 +18,11 @@ authorize {
     preprocess
     sql
 
-    
+    # Custom dynamic Pool-Name lookup from Django database
+    update control {
+        Pool-Name := "%{sql:SELECT CONCAT(c.nome, '_', c.pool_name_input) FROM coringa_cliente c JOIN coringa_clienteip ip ON c.id = ip.cliente_id WHERE (ip.endereco_ip = '%{NAS-IP-Address}' OR ip.endereco_ip LIKE CONCAT('%{NAS-IP-Address}', '/%%')) AND c.habilitar_pool = 1 AND c.status = 'ativo' LIMIT 1}"
+    }
+
     if (!ok) {
         update control {
             Auth-Type := Accept
@@ -43,6 +47,7 @@ authenticate {
             Framed-Protocol := PPP
             Service-Type := Framed-User
             Mikrotik-Rate-Limit := "50M/50M"
+            
         }
     }
 
@@ -65,6 +70,7 @@ preacct {
 
 accounting {
     sql
+    sqlippool
 }
 
 session {
@@ -72,6 +78,10 @@ session {
 
 post-auth {
     sql
+
+    if (control:Pool-Name) {
+        sqlippool
+    }
 
     update reply {
         Framed-Protocol := PPP

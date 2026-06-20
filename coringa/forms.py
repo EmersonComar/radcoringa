@@ -5,7 +5,7 @@ from .models import Cliente, ClienteIP
 class ClienteForm(forms.ModelForm):
     class Meta:
         model = Cliente
-        fields = ['nome', 'data_expiracao', 'observacao']
+        fields = ['nome', 'data_expiracao', 'observacao', 'habilitar_pool', 'pool_name_input', 'pool_block']
         widgets = {
             'nome': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Provedor internet'}),
             'data_expiracao': forms.DateTimeInput(
@@ -13,7 +13,23 @@ class ClienteForm(forms.ModelForm):
                 attrs={'class': 'form-control', 'type': 'datetime-local'}
             ),
             'observacao': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'habilitar_pool': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'pool_name_input': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: pool1'}),
+            'pool_block': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: 192.168.100.0/24'}),
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        habilitar_pool = cleaned_data.get('habilitar_pool')
+        pool_name_input = cleaned_data.get('pool_name_input')
+        pool_block = cleaned_data.get('pool_block')
+
+        if habilitar_pool:
+            if not pool_name_input:
+                self.add_error('pool_name_input', 'Este campo é obrigatório quando a entrega de IP por pool está habilitada.')
+            if not pool_block:
+                self.add_error('pool_block', 'Este campo é obrigatório quando a entrega de IP por pool está habilitada.')
+        return cleaned_data
 
 class BaseIPFormSet(BaseInlineFormSet):
     def clean(self):

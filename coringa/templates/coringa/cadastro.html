@@ -29,6 +29,59 @@
         </div>
 
         <div class="card shadow-sm mb-4">
+            <div class="card-header bg-info text-dark d-flex align-items-center">
+                <div class="form-check form-switch mb-0">
+                    {{ cadastro.habilitar_pool }}
+                    <label class="form-check-label fw-bold ms-2" for="{{ cadastro.habilitar_pool.id_for_label }}">
+                        Habilitar entrega de IP por Pool (Freeradius)
+                    </label>
+                </div>
+            </div>
+            <div class="card-body" id="pool-fields-container" style="display: none;">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Nome da Pool</label>
+                        {{ cadastro.pool_name_input }}
+                        <div class="form-text text-muted">
+                            Nota: O nome final da pool será <code>nomeprovedor_nomepool</code>.
+                        </div>
+                        {% if cadastro.pool_name_input.errors %}
+                            <div class="text-danger small mt-1">{{ cadastro.pool_name_input.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Bloco de IP da Pool</label>
+                        {{ cadastro.pool_block }}
+                        <div class="form-text text-muted">
+                            Suporta redes até /24 (Ex: 192.168.100.0/24).
+                        </div>
+                        {% if cadastro.pool_block.errors %}
+                            <div class="text-danger small mt-1">{{ cadastro.pool_block.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                var checkbox = document.getElementById('{{ cadastro.habilitar_pool.id_for_label }}');
+                var container = document.getElementById('pool-fields-container');
+                
+                function togglePoolFields() {
+                    if (checkbox.checked) {
+                        container.style.display = 'block';
+                    } else {
+                        container.style.display = 'none';
+                    }
+                }
+                
+                checkbox.addEventListener('change', togglePoolFields);
+                togglePoolFields();
+            });
+        </script>
+
+        <div class="card shadow-sm mb-4">
             <div class="card-header bg-secondary text-white">
                 <h4 class="mb-0">IPs Associados</h4>
             </div>

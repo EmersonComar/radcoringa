@@ -13,9 +13,9 @@ def gerar_secret(tamanho=16):
 def validar_ip(valor):
     try:
         net = IPv4Network(valor, strict=False)
-        if net.prefixlen < 24:
+        if net.prefixlen < 16:
             raise ValidationError(
-                _('Não é permitido cadastrar blocos de IP maiores que /24')
+                _('Não é permitido cadastrar blocos de IP maiores que /16')
             )
     except (ValueError, TypeError):
         raise ValidationError(
@@ -79,6 +79,27 @@ class Cliente(models.Model):
         default=StatusOpcoes.ATIVO
     )
 
+    habilitar_pool = models.BooleanField(
+        default=False,
+        verbose_name="Habilitar entrega de IP por Pool"
+    )
+
+    pool_name_input = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        verbose_name="Nome da Pool"
+    )
+
+    pool_block = models.CharField(
+        verbose_name='Bloco de IP da Pool',
+        validators=[validar_ip],
+        help_text="Exemplo: 192.168.100.0/24",
+        max_length=18,
+        blank=True,
+        null=True
+    )
+
     class Meta:
         verbose_name = "Provedor de internet"
         verbose_name_plural = "Provedores de internet"
@@ -86,6 +107,7 @@ class Cliente(models.Model):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._old_nome = self.nome
+        self._old_pool_name = f"{self.nome}_{self.pool_name_input}" if self.habilitar_pool else None
 
     def __str__(self):
         return f"{self.nome}"
@@ -241,6 +263,25 @@ class Radacct(models.Model):
         return f"{self.username} - {self.nasipaddress} - {self.acctsessiontime}s"
 
 
+class Radippool(models.Model):
+    pool_name = models.CharField(max_length=30)
+    framedipaddress = models.CharField(max_length=15)
+    nasipaddress = models.CharField(max_length=15, default='')
+    calledstationid = models.CharField(max_length=30, default='')
+    callingstationid = models.CharField(max_length=30, default='')
+    expiry_time = models.DateTimeField(blank=True, null=True)
+    username = models.CharField(max_length=64, default='')
+    pool_key = models.CharField(max_length=30, default='')
+
+    class Meta:
+        db_table = 'radippool'
+        verbose_name = 'IP da Pool'
+        verbose_name_plural = 'IPs da Pool'
+
+    def __str__(self):
+        return f"{self.pool_name} - {self.framedipaddress}"
+
+
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.utils import timezone
@@ -310,6 +351,35 @@ def sync_cliente_nas(sender, instance, **kwargs):
 @receiver(post_delete, sender=Cliente)
 def clean_leftover_nas_on_cliente_delete(sender, instance, **kwargs):
     Nas.objects.filter(shortname=instance.nome[:32]).delete()
+    if getattr(instance, 'habilitar_pool', False):
+        old_pool_name = f"{instance.nome}_{instance.pool_name_input}"
+        Radippool.objects.filter(pool_name=old_pool_name).delete()
+
+@receiver(post_save, sender=Cliente)
+def sync_cliente_pool(sender, instance, **kwargs):
+    old_pool_name = getattr(instance, '_old_pool_name', None)
+    if old_pool_name:
+        Radippool.objects.filter(pool_name=old_pool_name).delete()
+
+    if instance.status == 'ativo' and instance.habilitar_pool and instance.pool_block:
+        new_pool_name = f"{instance.nome}_{instance.pool_name_input}"
+        try:
+            net = IPv4Network(instance.pool_block, strict=False)
+            if net.num_addresses == 1:
+                ips = [str(net.network_address)]
+            else:
+                ips = [str(ip) for ip in net.hosts()]
+
+            past_date = timezone.now() - timezone.timedelta(days=365)
+            pool_entries = [
+                Radippool(pool_name=new_pool_name, framedipaddress=ip, expiry_time=past_date)
+                for ip in ips
+            ]
+            Radippool.objects.bulk_create(pool_entries)
+        except Exception as e:
+            print(f"Erro ao processar pool de IPs: {e}")
+
+    instance._old_pool_name = f"{instance.nome}_{instance.pool_name_input}" if instance.habilitar_pool else None
 
 @receiver(post_save, sender=ClienteIP)
 def sync_clienteip_save(sender, instance, **kwargs):

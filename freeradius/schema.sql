@@ -178,3 +178,22 @@ CREATE TABLE IF NOT EXISTS nasreload (
   reloadtime datetime NOT NULL,
   PRIMARY KEY (nasipaddress)
 ) ENGINE = INNODB;
+
+#
+# Table structure for table 'radippool'
+#
+CREATE TABLE IF NOT EXISTS radippool (
+  id int(11) unsigned NOT NULL auto_increment,
+  pool_name varchar(30) NOT NULL,
+  framedipaddress varchar(15) NOT NULL default '',
+  nasipaddress varchar(15) NOT NULL default '',
+  calledstationid varchar(30) NOT NULL default '',
+  callingstationid varchar(30) NOT NULL default '',
+  expiry_time datetime NULL default NULL,
+  username varchar(64) NOT NULL default '',
+  pool_key varchar(30) NOT NULL default '',
+  PRIMARY KEY (id),
+  KEY poolname (pool_name),
+  KEY framedipaddress (framedipaddress),
+  KEY info (nasipaddress, pool_key, framedipaddress)
+) ENGINE=InnoDB;

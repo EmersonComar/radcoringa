@@ -10,7 +10,8 @@ from django.contrib.auth import views as auth_views
 from django.core.cache import cache
 
 from .forms import ClienteForm, IPFormSet
-from coringa.models import Cliente, ClienteIP, Radpostauth, Radacct
+from coringa.models import Cliente, ClienteIP, Radpostauth, Radacct, Radippool
+from django.db import models as django_models
 
 @login_required
 def Home(request):
@@ -98,6 +99,28 @@ def Detalhes(request, pk):
     clean_ips = [ip.split('/')[0] for ip in ip_list]
     todos_logs = obter_logs_unificados(clean_ips=clean_ips, limit=1000)
     
+    pool_data = None
+    pool_info = ""
+    if cliente.habilitar_pool:
+        pool_name = f"{cliente.nome}_{cliente.pool_name_input}"
+        total_ips = Radippool.objects.filter(pool_name=pool_name).count()
+        free_ips = Radippool.objects.filter(
+            pool_name=pool_name
+        ).filter(
+            django_models.Q(username='') | django_models.Q(username__isnull=True) | django_models.Q(expiry_time__lt=timezone.now())
+        ).count()
+        pool_info = f" (Pool: {free_ips}/{total_ips} livres)"
+        pool_data = {
+            'nome': pool_name,
+            'total': total_ips,
+            'livres': free_ips,
+            'ocupados': total_ips - free_ips,
+            'bloco': cliente.pool_block,
+        }
+
+    for log in todos_logs:
+        log['cliente_nome'] = f"{cliente.nome}{pool_info}"
+        
     paginator = Paginator(todos_logs, 10)
     page = request.GET.get('page')
     try:
@@ -111,7 +134,8 @@ def Detalhes(request, pk):
         'user': str(request.user),
         'cliente': cliente,
         'ips': ips,
-        'logs': logs
+        'logs': logs,
+        'pool_data': pool_data
     }
     return render(request, 'coringa/detalhes.html', context)
 
@@ -150,6 +174,28 @@ def HistoricoDetalhes(request, pk):
     clean_ips = [ip.split('/')[0] for ip in ip_list]
     todos_logs = obter_logs_unificados(clean_ips=clean_ips, limit=1000)
     
+    pool_data = None
+    pool_info = ""
+    if cliente.habilitar_pool:
+        pool_name = f"{cliente.nome}_{cliente.pool_name_input}"
+        total_ips = Radippool.objects.filter(pool_name=pool_name).count()
+        free_ips = Radippool.objects.filter(
+            pool_name=pool_name
+        ).filter(
+            django_models.Q(username='') | django_models.Q(username__isnull=True) | django_models.Q(expiry_time__lt=timezone.now())
+        ).count()
+        pool_info = f" (Pool: {free_ips}/{total_ips} livres)"
+        pool_data = {
+            'nome': pool_name,
+            'total': total_ips,
+            'livres': free_ips,
+            'ocupados': total_ips - free_ips,
+            'bloco': cliente.pool_block,
+        }
+
+    for log in todos_logs:
+        log['cliente_nome'] = f"{cliente.nome}{pool_info}"
+        
     paginator = Paginator(todos_logs, 10)
     page = request.GET.get('page')
     try:
@@ -163,7 +209,8 @@ def HistoricoDetalhes(request, pk):
         'user': str(request.user),
         'cliente': cliente,
         'ips': ips,
-        'logs': logs
+        'logs': logs,
+        'pool_data': pool_data
     }
     return render(request, 'coringa/historico_detalhes.html', context)
 
@@ -351,6 +398,20 @@ def obter_logs_unificados(clean_ips=None, dt_start=None, dt_end=None, status_rep
     todos_logs.sort(key=lambda x: x['date'], reverse=True)
     return todos_logs
 
+def obter_stats_pools():
+    pool_stats = {}
+    clientes = Cliente.objects.filter(status='ativo', habilitar_pool=True)
+    for c in clientes:
+        pool_name = f"{c.nome}_{c.pool_name_input}"
+        total_ips = Radippool.objects.filter(pool_name=pool_name).count()
+        free_ips = Radippool.objects.filter(
+            pool_name=pool_name
+        ).filter(
+            django_models.Q(username='') | django_models.Q(username__isnull=True) | django_models.Q(expiry_time__lt=timezone.now())
+        ).count()
+        pool_stats[c.nome] = f" (Pool: {free_ips}/{total_ips} livres)"
+    return pool_stats
+
 @login_required
 def LogsAAA(request):
     cliente_id = request.GET.get('cliente')
@@ -400,8 +461,11 @@ def LogsAAA(request):
         for ip_obj in c.Lista_ips.all():
             ip_to_client_name[ip_obj.endereco_ip.split('/')[0]] = c.nome
             
+    pool_stats = obter_stats_pools()
     for log in todos_logs:
-        log['cliente_nome'] = ip_to_client_name.get(log['nas_ip'], 'Desconhecido')
+        client_name = ip_to_client_name.get(log['nas_ip'], 'Desconhecido')
+        pool_info = pool_stats.get(client_name, '')
+        log['cliente_nome'] = f"{client_name}{pool_info}"
         
     if request.GET.get('export') == 'csv':
         response = HttpResponse(content_type='text/csv; charset=utf-8')
